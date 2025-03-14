@@ -1,39 +1,63 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import axios from 'axios';
+
 const app = express();
-const port = 3000;
+const port = 5000;
 
 // Middleware
-app.use(cors()); // Enable CORS
-app.use(express.json()); // Parse JSON request bodies
-app.use(express.static('public')); // Serve static files (HTML, CSS, JS)
+app.use(cors()); 
+app.use(express.json());
 
-// API endpoint for downloading Instagram videos
-app.post('/download', async (req, res) => {
-    const { url } = req.body;
-
-    if (!url || !url.includes('instagram.com')) {
-        return res.status(400).json({ success: false, message: 'Invalid Instagram URL.' });
-    }
-
-    try {
-        // Replace this with a real Instagram video downloader API
-        const apiUrl = `https://api.savefrom.net/download?url=${encodeURIComponent(url)}`;
-        const response = await axios.get(apiUrl);
-
-        if (response.data.videoUrl) {
-            res.json({ success: true, downloadUrl: response.data.videoUrl });
-        } else {
-            res.status(500).json({ success: false, message: 'Video not found.' });
-        }
-    } catch (error) {
-        console.error('Error fetching video:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch video.' });
-    }
+// Root route
+app.get('/', (req, res) => {
+	res.send('Instagram Reels Downloader API');
 });
 
-// Start the server
+// API endpoint for downloading Instagram reels
+app.get('/download-reels', async (req, res) => {
+	const { url } = req.query; // Get URL from the query parameters
+	console.log('URL:', url);
+
+	// Validate URL
+	if (!url || !url.startsWith('https://www.instagram.com')) {
+		return res.status(400).json({ success: false, message: 'A valid Instagram URL is required.' });
+	}
+
+	try {
+		const options = {
+			method: 'GET',
+			url: 'https://instagram-reels-downloader-api.p.rapidapi.com/download',
+			params: {
+				url: url, 
+			},
+			headers: {
+				'x-rapidapi-key': '12c2fa05b3mshccf8a4b3eb452ccp1380b7jsn71e1f5190176', 
+				'x-rapidapi-host': 'instagram-reels-downloader-api.p.rapidapi.com',
+			},
+		};
+
+		// Make the request to RapidAPI
+		const response = await axios(options);
+
+		// Debugging: Log the full response
+		console.log('API Response:', JSON.stringify(response.data, null, 2));
+
+		// Extract the video URL from the medias array
+		if (!response.data.data.medias || response.data.data.medias.length === 0) {
+			return res.status(404).json({ success: false, message: 'No video found in the response.' });
+		}
+
+		const videoUrl = response.data.data.medias[0].url;
+
+		// Send the video URL back to the client
+		res.json({ success: true, videoUrl: videoUrl });
+	} catch (error) {
+		console.error('Error:', error.response ? error.response.data : error.message);
+		res.status(500).json({ success: false, message: 'Failed to fetch reels.' });
+	}
+});
+
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+	console.log(`Server running at http://localhost:${port}`);
 });

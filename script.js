@@ -1,31 +1,45 @@
 document.getElementById('downloadBtn').addEventListener('click', async () => {
-    const videoUrl = document.getElementById('videoUrl').value;
-    const message = document.getElementById('message');
+	const videoUrl = document.getElementById('videoUrl').value.trim(); // Trim whitespace
+	const message = document.getElementById('message');
 
-    if (!videoUrl) {
-        message.textContent = 'Please enter a valid Instagram video URL.';
-        return;
-    }
+	console.log('Video URL:', videoUrl); // Debugging
+	console.log('Message element:', message); // Debugging
 
-    try {
-        const response = await fetch('/download', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: videoUrl }),
-        });
+	// Validate URL
+	if (!videoUrl || !videoUrl.startsWith('https://www.instagram.com')) {
+		message.textContent = 'Please enter a valid Instagram video URL.';
+		return;
+	}
 
-        const data = await response.json();
+	try {
+		// Pass the videoUrl as a query parameter
+		const apiUrl = `http://localhost:5000/download-reels?url=${encodeURIComponent(videoUrl)}`;
 
-        if (data.success) {
-            window.location.href = data.downloadUrl; // Start download
-            message.textContent = 'Download started...';
-        } else {
-            message.textContent = data.message || 'Failed to download the video.';
-        }
-    } catch (error) {
-        message.textContent = 'An error occurred. Please try again.';
-        console.error(error);
-    }
+		const response = await fetch(apiUrl, {
+			method: 'GET',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		});
+
+		console.log('Response:', response); 
+
+		if (!response.ok) {
+			throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+		}
+
+		const data = await response.json();
+		console.log('Data:', data);
+
+		if (data.success) {
+			// Start download
+			window.location.href = data.videoUrl; 
+			message.textContent = 'Download started...';
+		} else {
+			message.textContent = data.message || 'Failed to download the video.';
+		}
+	} catch (error) {
+		message.textContent = 'An error occurred. Please try again.';
+		console.error('Error:', error); 
+	}
 });
